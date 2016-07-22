@@ -96,14 +96,23 @@ var find = module.exports.find = function(q) {
 
   if (results.length === 1) {
     return results[0];
+  } else if (results.length > 1) {
+    results = results.filter(r => {
+      return r.Type === 'AIRPORT' && r.City.match(regexp);
+    });
+    if (results.length === 1) {
+      return results[0];
+    }
   }
 
   results = airports.filter(a => {
     return JSON.stringify(a).match(regexp);
+  }).sort((a, b) => {
+    return JSON.stringify(a).match(new RegExp(q, 'ig')).length - JSON.stringify(b).match(new RegExp(q, 'ig')).length;
   })
 
-  if (results.length === 1) {
-    return results[0];
+  if (results.length >= 1) {
+    return results.pop();
   }
 }
 
