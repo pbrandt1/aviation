@@ -79,25 +79,35 @@ module.exports.airports = airports;
 
 var codes = module.exports.codes = airports.reduce((codes, a) => {
   if (a.IcaoIdentifier)
-    codes[a.IcaoIdentifier.slice(1)] = a;
+    codes[a.LocationID] = a;
   return codes;
 }, {})
 
-if (!module.parent) {
-  var q = process.argv[2];
-
+var find = module.exports.find = function(q) {
   if (codes[q.toUpperCase()]) {
-    console.log(codes[q.toUpperCase()]);
-    process.exit(0);
+    return codes[q.toUpperCase()];
   }
 
-  var results = airports.filter(a => {
-    return JSON.stringify(a).match(new RegExp(q, 'i'));
+  var regexp = new RegExp(q, 'i');
+
+  results = airports.filter(a => {
+    return a.FacilityName && a.FacilityName.match(regexp);
   })
 
-  if (results.length >= 1) {
-    console.log(results);
-  } else {
-    console.log('could not find airport');
+  if (results.length === 1) {
+    return results[0];
   }
+
+  results = airports.filter(a => {
+    return JSON.stringify(a).match(regexp);
+  })
+
+  if (results.length === 1) {
+    return results[0];
+  }
+}
+
+if (!module.parent) {
+  var q = process.argv[2];
+  console.log(find(q));
 }
