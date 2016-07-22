@@ -16,44 +16,40 @@ module.exports.places = [{
   lon: -86.322464
 }];
 
-var promisify = require('promisify-node');
-var fs = promisify(require('fs'));
-var airports = function*() {
-  var csv = yield fs.readFile(__dirname + '/sql/NfdcFacilities.csv', 'utf8');
-  var headers = csv.split('\n')[0].split(',');
-
-  return csv.split('\n').slice(1).map(r => {
-    var in_quote = false;
-    var val = '';
-    var array = [];
-    for (var i = 0; i < r.length; i++) {
-      if (r[i] === ',' && !in_quote) {
-        array.push(val);
-        val = '';
-      } else if (r[i] === '"') {
-        in_quote = !in_quote;
-        val += '"'
-      } else {
-        val += r[i];
-      }
+var fs = require('fs');
+var csv = fs.readFileSync(__dirname + '/sql/NfdcFacilities.csv', 'utf8')
+var headers = csv.split('\n')[0].split(',');
+var airports = csv.split('\n').slice(1).map(r => {
+  var in_quote = false;
+  var val = '';
+  var array = [];
+  for (var i = 0; i < r.length; i++) {
+    if (r[i] === ',' && !in_quote) {
+      array.push(val);
+      val = '';
+    } else if (r[i] === '"') {
+      in_quote = !in_quote;
+      val += '"'
+    } else {
+      val += r[i];
     }
-    return array;
-  }).filter(Boolean).map(r => {
-    var obj = r.reduce((obj, v, i) => {
-      if (v) {
-        obj[headers[i]] = v.replace(/"/g, '')
-      }
-      if (headers[i] === 'ARPLatitude') {
-        obj.lat = dms2lat(v);
-      } else if (headers[i] === 'ARPLongitude') {
-        obj.lon = dms2lon(v);
-      }
-      return obj;
-    }, {});
+  }
+  return array;
+}).filter(Boolean).map(r => {
+  var obj = r.reduce((obj, v, i) => {
+    if (v) {
+      obj[headers[i]] = v.replace(/"/g, '')
+    }
+    if (headers[i] === 'ARPLatitude') {
+      obj.lat = dms2lat(v);
+    } else if (headers[i] === 'ARPLongitude') {
+      obj.lon = dms2lon(v);
+    }
     return obj;
-  })
+  }, {});
+  return obj;
+})
 
-}
 
 // turns 43-01-2.13412N into a single +/- decimal
 function dms2lat(dms) {
@@ -81,23 +77,27 @@ function dms2lon(dms) {
 
 module.exports.airports = airports;
 
-module.exports.codes = function *() {
-  var data = yield airports();
-  return data.reduce((codes, a) => {
-    codes[a.NOTAMFacilityID] = a;
-    return codes;
-  }, {})
-}
+var codes = module.exports.codes = airports.reduce((codes, a) => {
+  if (a.IcaoIdentifier)
+    codes[a.IcaoIdentifier.slice(1)] = a;
+  return codes;
+}, {})
 
 if (!module.parent) {
+  var q = process.argv[2];
 
-  var co = require('co');
-  co(function*() {
-    var a = yield airports();
-    console.log(a.filter(p => {
-      return p.NOTAMFacilityID === 'CID';
-    }));
+  if (codes[q.toUpperCase()]) {
+    console.log(codes[q.toUpperCase()]);
+    process.exit(0);
+  }
 
+  var results = airports.filter(a => {
+    return JSON.stringify(a).match(new RegExp(q, 'i'));
+  })
 
-  }).catch(console.error.bind(console));
+  if (results.length >= 1) {
+    console.log(results);
+  } else {
+    console.log('could not find airport');
+  }
 }
