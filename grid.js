@@ -1,4 +1,15 @@
 var airports = ['CID', 'DSM', 'waukon', 'MSP', 'MDW', 'IAH', 'SAN', 'DCA', 'LGA', 'CVG', 'ORL', 'SFO', 'BUR'];
+var result_type = 'distance';
+var speed = 201;
+if (process.argv.indexOf('-t') >= 0) {
+  result_type = 'time';
+  process.argv.splice(process.argv.indexOf('-t'), 1);
+}
+if (process.argv.indexOf('-s') >= 0) {
+  var i = process.argv.indexOf('-s');
+  speed = process.argv[i+1];
+  process.argv.splice(i, 2);
+}
 if (process.argv.length > 2) {
   airports = process.argv.slice(2);
 }
@@ -21,16 +32,20 @@ airports = airports.map(a => {
 var colors = ['cyan', 'white'];
 
 // header
-console.log('    ' + airports.map((a, i) => ('     ' + a.LocationID).substr(-5)).join(''))
+console.log('    ' + airports.map((a, i) => ('      ' + a.LocationID).substr(-6)).join(''))
 
 // body
 airports.map((a, i) => {
   console.log(a.LocationID[colors[i%2]] + ' ' + airports.map(b => {
     if (a === b) {
-      //      1200
-      return '    -'
+      return '  --  '
+    } else if (result_type === 'distance') {
+      return ('      ' + Math.round(tools.distance(a, b))).substr(-6);
     } else {
-      return ('     ' + Math.round(tools.distance(a, b))).substr(-5);
+      var time = tools.distance(a, b) / speed;
+      var hours = time | 0;
+      var minutes = Math.round((time - hours) * 60);
+      return ('      ' + hours + ':' + ('00' + minutes).substr(-2)).substr(-6);
     }
   }).join('')[colors[i%2]]);
 })
